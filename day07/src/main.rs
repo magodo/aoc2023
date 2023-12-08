@@ -3,29 +3,46 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
 
-#[derive(Debug, PartialEq, Ord)]
-struct Input {
-    card: Hand,
-    bid: u32,
+#[derive(Debug, PartialEq, Eq, Ord)]
+struct Card {
+    value: String,
+    joker_enabled: bool,
 }
 
-#[derive(Debug, PartialEq)]
-struct Card(String);
-
-impl PartialOrd for Card {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        for (c1, c2) in self.0.chars().zip(other.0.chars()) {
-            return c1.partial_cmp(&c2);
+impl Card {
+    fn new(input: &str, joker_enabled: bool) -> Self {
+        Card {
+            value: String::from(input),
+            joker_enabled,
         }
-        None
     }
 }
 
-impl Ord for Card {
-    fn cmp(&self, other: &Self) -> Ordering {}
+impl PartialOrd for Card {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let mut sorted_card: Vec<char> = "AKQJT98765432".chars().collect();
+        if self.joker_enabled {
+            sorted_card = "AKQT98765432J".chars().collect();
+        }
+        let len = sorted_card.len();
+        let m: HashMap<char, usize> = sorted_card
+            .into_iter()
+            .zip((0..len).rev().collect::<Vec<usize>>())
+            .collect();
+        let mut order: Option<Ordering> = None;
+        for (c1, c2) in self.value.chars().zip(other.value.chars()) {
+            order = m.get(&c1).unwrap().partial_cmp(m.get(&c2).unwrap());
+            if let Some(ord) = order {
+                if ord != Ordering::Equal {
+                    return order;
+                }
+            }
+        }
+        return order;
+    }
 }
 
-#[derive(Debug, PartialEq, Ord)]
+#[derive(Debug, PartialEq, Eq, Ord)]
 enum Hand {
     Five(Card),
     Four(Card),
@@ -36,31 +53,33 @@ enum Hand {
     High(Card),
 }
 
-impl Card {
-    fn new(input: &str) -> Self {
-        Card(String::from(input))
-    }
-}
-
-impl Input {
-    fn new(input: &str) -> Self {
-        let mut line = input.split_whitespace();
-        let card = Hand::new(line.next().unwrap());
-        let bid = line.next().unwrap().parse().unwrap();
-        Input { card, bid }
-    }
-}
-
 impl Hand {
-    fn new(input: &str) -> Self {
+    fn new(input: &str, joker_enabled: bool) -> Self {
         let mut m: HashMap<char, u8> = HashMap::new();
         String::from(input).chars().for_each(|c| {
             let entry = m.entry(c).or_insert(0);
             *entry += 1;
         });
+
+        let mut joker_cnt = 0;
+        if let Some(v) = m.get(&'J') {
+            joker_cnt = *v;
+        }
+
         let mut cnt: Vec<u8> = m.into_values().collect();
         cnt.sort();
-        let inner = Card::new(input);
+        cnt.reverse();
+
+        if joker_enabled {
+            if let Some(idx) = cnt.iter().position(|&e| e == joker_cnt) {
+                if cnt.len() != 1 {
+                    let v = cnt.remove(idx);
+                    cnt[0] += v;
+                }
+            }
+        }
+
+        let inner = Card::new(input, joker_enabled);
         match cnt.len() {
             1 => Hand::Five(inner),
             2 => match cnt[0] {
@@ -130,16 +149,46 @@ impl PartialOrd for Hand {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Ord)]
+struct Input {
+    card: Hand,
+    bid: u32,
+}
+
+impl PartialOrd for Input {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.card.partial_cmp(&other.card)
+    }
+}
+
+impl Input {
+    fn new(input: &str, joker_enabled: bool) -> Self {
+        let mut line = input.split_whitespace();
+        let card = Hand::new(line.next().unwrap(), joker_enabled);
+        let bid = line.next().unwrap().parse().unwrap();
+        Input { card, bid }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         panic!("Usage: ./exe <file>");
     }
+    run(&args[1], false);
+    run(&args[1], true);
+}
 
-    let mut v: Vec<Input> = read_to_string(&args[1])
+fn run(path: &str, joker_enabled: bool) {
+    let mut v: Vec<Input> = read_to_string(path)
         .unwrap()
         .lines()
-        .map(|line| Input::new(line))
+        .map(|line| Input::new(line, joker_enabled))
         .collect();
     v.sort();
+    let mut sum: u32 = 0;
+    v.iter().enumerate().for_each(|(i, v)| {
+        sum += (i as u32 + 1) * v.bid;
+    });
+    println!("{}", sum);
 }
