@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::env;
 use std::fs::read_to_string;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 enum Pipe {
     NS,
     EW,
@@ -14,12 +14,10 @@ enum Pipe {
     Ground,
 }
 
-struct Area(Vec<Vec<Pipe>>);
-
-#[derive(Debug)]
-struct NextMove {
-    pos: Option<(usize, usize)>,
-    step: usize,
+struct Area {
+    area: Vec<Vec<Pipe>>,
+    main_loop_vec: Vec<(usize, usize)>,
+    main_loop_set: HashSet<(usize, usize)>,
 }
 
 impl Area {
@@ -42,11 +40,64 @@ impl Area {
             });
             vvs.push(vs);
         });
-        Area(vvs)
+        let mut area = Area {
+            area: vvs,
+            main_loop_vec: Vec::new(),
+            main_loop_set: HashSet::new(),
+        };
+        let main_loop = area.build_loop();
+        area.main_loop_vec = main_loop;
+        let loop_set: HashSet<(usize, usize)> = area.main_loop_vec.clone().into_iter().collect();
+        area.main_loop_set = loop_set;
+
+        let start = area.main_loop_vec.first().unwrap();
+        let before_start = area.main_loop_vec.last().unwrap();
+        let after_start = area.main_loop_vec.get(1).unwrap();
+
+        let gap = (
+            after_start.0 as i64 - before_start.0 as i64,
+            after_start.1 as i64 - before_start.1 as i64,
+        );
+
+        let start_pipe = match gap {
+            (2, 0) | (-2, 0) => Pipe::NS,
+            (0, 2) | (0, -2) => Pipe::EW,
+            (1, 1) => {
+                if start.0 == after_start.0 {
+                    Pipe::NE
+                } else {
+                    Pipe::SW
+                }
+            }
+            (1, -1) => {
+                if start.0 == after_start.0 {
+                    Pipe::NW
+                } else {
+                    Pipe::SE
+                }
+            }
+            (-1, 1) => {
+                if start.0 == after_start.0 {
+                    Pipe::SE
+                } else {
+                    Pipe::NW
+                }
+            }
+            (-1, -1) => {
+                if start.0 == after_start.0 {
+                    Pipe::SW
+                } else {
+                    Pipe::NE
+                }
+            }
+            _ => panic!("unreachable"),
+        };
+        area.area[start.0][start.1] = start_pipe;
+        area
     }
 
     fn start_pipe(&self) -> (usize, usize) {
-        for (x, vs) in self.0.iter().enumerate() {
+        for (x, vs) in self.area.iter().enumerate() {
             for (y, v) in vs.iter().enumerate() {
                 if *v == Pipe::Start {
                     return (x, y);
@@ -56,125 +107,111 @@ impl Area {
         panic!("unreachable");
     }
 
-    fn farest_step(self: &Self) -> usize {
-        let mut m: HashMap<(usize, usize), usize> = HashMap::new();
-        let (x, y) = self.start_pipe();
-        m.insert((x, y), 0);
-        let mut start_points: Vec<(usize, usize)> = Vec::new();
-        if let Some(vs) = self.0.get(x) {
-            if y > 0 {
-                if let Some(v) = vs.get(y - 1) {
-                    if *v == Pipe::EW || *v == Pipe::NE || *v == Pipe::SE {
-                        start_points.push((x, y - 1));
+    fn build_loop(self: &Self) -> Vec<(usize, usize)> {
+        let mut vec: Vec<(usize, usize)> = Vec::new();
+        let start = self.start_pipe();
+        let (x, y) = start;
+        vec.push(start);
+        loop {
+            if let Some(vs) = self.area.get(x) {
+                if y > 0 {
+                    if let Some(v) = vs.get(y - 1) {
+                        if *v == Pipe::EW || *v == Pipe::NE || *v == Pipe::SE {
+                            vec.push((x, y - 1));
+                            break;
+                        }
+                    }
+                }
+                if let Some(v) = vs.get(y + 1) {
+                    if *v == Pipe::EW || *v == Pipe::NW || *v == Pipe::SW {
+                        vec.push((x, y + 1));
+                        break;
                     }
                 }
             }
-            if let Some(v) = vs.get(y + 1) {
-                if *v == Pipe::EW || *v == Pipe::NW || *v == Pipe::SW {
-                    start_points.push((x, y + 1));
+            if x > 0 {
+                if let Some(vs) = self.area.get(x - 1) {
+                    if let Some(v) = vs.get(y) {
+                        if *v == Pipe::NS || *v == Pipe::SW || *v == Pipe::SE {
+                            vec.push((x - 1, y));
+                            break;
+                        }
+                    }
                 }
             }
-        }
-        if x > 0 {
-            if let Some(vs) = self.0.get(x - 1) {
+            if let Some(vs) = self.area.get(x + 1) {
                 if let Some(v) = vs.get(y) {
-                    if *v == Pipe::NS || *v == Pipe::SW || *v == Pipe::SE {
-                        start_points.push((x - 1, y));
+                    if *v == Pipe::NS || *v == Pipe::NW || *v == Pipe::NE {
+                        vec.push((x + 1, y));
+                        break;
                     }
                 }
             }
         }
-        if let Some(vs) = self.0.get(x + 1) {
-            if let Some(v) = vs.get(y) {
-                if *v == Pipe::NS || *v == Pipe::NW || *v == Pipe::NE {
-                    start_points.push((x + 1, y));
-                }
-            }
-        }
-        assert!(start_points.len() == 2);
-
-        let mut p1: (usize, usize) = start_points[0];
-        let mut p2: (usize, usize) = start_points[1];
-
-        m.insert(p1, 1);
-        m.insert(p2, 1);
+        assert!(vec.len() == 2);
 
         loop {
-            let next = self.move_step(p1, &mut m);
-            if let Some(p) = next.pos {
-                p1 = p;
+            if let Some(pos) = self.next(&vec) {
+                vec.push(pos);
             } else {
-                break next.step;
-            }
-            let next = self.move_step(p2, &mut m);
-            if let Some(p) = next.pos {
-                p2 = p;
-            } else {
-                break next.step;
+                break vec;
             }
         }
     }
 
-    fn move_step(
-        self: &Self,
-        p: (usize, usize),
-        m: &mut HashMap<(usize, usize), usize>,
-    ) -> NextMove {
-        let (x, y) = p;
-        let step = m.get(&(x, y)).unwrap().clone();
-        let mut pos: Option<(usize, usize)> = None;
-        match self.0.get(x).unwrap().get(y).unwrap() {
+    fn next(self: &Self, vec: &Vec<(usize, usize)>) -> Option<(usize, usize)> {
+        let (x_ll, y_ll) = vec.get(vec.len() - 2).unwrap().clone();
+        let (x, y) = vec.last().unwrap().clone();
+        let mut pos = (0, 0);
+        match self.area.get(x).unwrap().get(y).unwrap() {
             Pipe::NS => {
-                if !m.contains_key(&(x + 1, y)) {
-                    pos = Some((x + 1, y));
-                } else if !m.contains_key(&(x - 1, y)) {
-                    pos = Some((x - 1, y));
+                if (x_ll, y_ll) != (x + 1, y) {
+                    pos = (x + 1, y);
+                } else if (x_ll, y_ll) != (x - 1, y) {
+                    pos = (x - 1, y);
                 }
             }
             Pipe::EW => {
-                if !m.contains_key(&(x, y + 1)) {
-                    pos = Some((x, y + 1));
-                } else if !m.contains_key(&(x, y - 1)) {
-                    pos = Some((x, y - 1));
+                if (x_ll, y_ll) != (x, y + 1) {
+                    pos = (x, y + 1);
+                } else if (x_ll, y_ll) != (x, y - 1) {
+                    pos = (x, y - 1);
                 }
             }
             Pipe::NE => {
-                if !m.contains_key(&(x, y + 1)) {
-                    pos = Some((x, y + 1));
-                } else if !m.contains_key(&(x - 1, y)) {
-                    pos = Some((x - 1, y));
+                if (x_ll, y_ll) != (x, y + 1) {
+                    pos = (x, y + 1);
+                } else if (x_ll, y_ll) != (x - 1, y) {
+                    pos = (x - 1, y);
                 }
             }
             Pipe::NW => {
-                if !m.contains_key(&(x, y - 1)) {
-                    pos = Some((x, y - 1));
-                } else if !m.contains_key(&(x - 1, y)) {
-                    pos = Some((x - 1, y));
+                if (x_ll, y_ll) != (x, y - 1) {
+                    pos = (x, y - 1);
+                } else if (x_ll, y_ll) != (x - 1, y) {
+                    pos = (x - 1, y);
                 }
             }
             Pipe::SW => {
-                if !m.contains_key(&(x, y - 1)) {
-                    pos = Some((x, y - 1));
-                } else if !m.contains_key(&(x + 1, y)) {
-                    pos = Some((x + 1, y));
+                if (x_ll, y_ll) != (x, y - 1) {
+                    pos = (x, y - 1);
+                } else if (x_ll, y_ll) != (x + 1, y) {
+                    pos = (x + 1, y);
                 }
             }
             Pipe::SE => {
-                if !m.contains_key(&(x + 1, y)) {
-                    pos = Some((x + 1, y));
-                } else if !m.contains_key(&(x, y + 1)) {
-                    pos = Some((x, y + 1));
+                if (x_ll, y_ll) != (x, y + 1) {
+                    pos = (x, y + 1);
+                } else if (x_ll, y_ll) != (x + 1, y) {
+                    pos = (x + 1, y);
                 }
             }
             _ => panic!("unreachable"),
         };
-        if let Some(pos) = pos {
-            m.insert(pos, step + 1);
+        if pos == vec.first().unwrap().clone() {
+            return None;
         }
-        return NextMove {
-            pos,
-            step: step + 1,
-        };
+        Some(pos)
     }
 }
 
@@ -184,6 +221,45 @@ fn main() {
         panic!("./exe <file>");
     }
     let area = Area::new(&read_to_string(&args[1]).unwrap());
-    let step = area.farest_step();
-    println!("{}", step);
+    println!("{}", area.main_loop_vec.len() / 2);
+
+    let mut cnt = 0;
+    area.area.iter().enumerate().for_each(|(x, line)| {
+        let mut in_loop = false;
+        let mut half_boundary: Option<Pipe> = None;
+        line.iter().enumerate().for_each(|(y, p)| {
+            if area.main_loop_set.contains(&(x, y)) {
+                match *p {
+                    Pipe::NS => {
+                        in_loop = !in_loop;
+                        half_boundary = None;
+                    }
+                    Pipe::SE => {
+                        half_boundary = Some(Pipe::SE);
+                    }
+                    Pipe::NE => {
+                        half_boundary = Some(Pipe::NE);
+                    }
+                    Pipe::SW => {
+                        let hb = half_boundary.take().unwrap();
+                        if hb == Pipe::NE {
+                            in_loop = !in_loop;
+                        }
+                    }
+                    Pipe::NW => {
+                        let hb = half_boundary.take().unwrap();
+                        if hb == Pipe::SE {
+                            in_loop = !in_loop;
+                        }
+                    }
+                    _ => {}
+                }
+                return;
+            }
+            if in_loop {
+                cnt += 1;
+            }
+        })
+    });
+    println!("{}", cnt);
 }
