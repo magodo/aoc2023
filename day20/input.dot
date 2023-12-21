@@ -1,0 +1,118 @@
+digraph G {
+  nr [shape=box]
+  nr -> {mr}
+  sx [shape=oval]
+  sx -> {zh}
+  rk [shape=box]
+  rk -> {dc bl}
+  lx [shape=box]
+  lx -> {rs}
+  hx [shape=box]
+  hx -> {bl}
+  hp [shape=box]
+  hp -> {bj}
+  dk [shape=box]
+  dk -> {mr lf}
+  hc [shape=box]
+  hc -> {xc}
+  bj [shape=box]
+  bj -> {vv rd}
+  jt [shape=oval]
+  jt -> {zh}
+  bl [shape=oval]
+  bl -> {ks kn dc hc zk}
+  zh [shape=oval]
+  zh -> {rx}
+  sp [shape=box]
+  sp -> {hz bl}
+  rd [shape=box]
+  rd -> {vv tp}
+  cg [shape=box]
+  cg -> {dk}
+  rg [shape=box]
+  rg -> {jl pv}
+  jl [shape=box]
+  jl -> {js}
+  fb [shape=box]
+  fb -> {vv zd}
+  gv [shape=box]
+  gv -> {lx}
+  lr [shape=box]
+  lr -> {vj bl}
+  vz [shape=box]
+  vz -> {hc bl}
+  kn [shape=box]
+  kn -> {bl zk}
+  rj [shape=box]
+  rj -> {mr nr}
+  cn [shape=box]
+  cn -> {pv sb}
+  rs [shape=box]
+  rs -> {vv hp}
+  mr [shape=oval]
+  mr -> {qc kb gc vl bs cg lf}
+  rb [shape=box]
+  rb -> {qj}
+  sm [shape=box]
+  sm -> {bv vv}
+  dh [shape=box]
+  dh -> {rg}
+  zk [shape=box]
+  zk -> {vz}
+  qj [shape=box]
+  qj -> {xs pv}
+  ng [shape=box]
+  ng -> {ql pv}
+  vj [shape=box]
+  vj -> {bl sp}
+  kb [shape=oval]
+  kb -> {zh}
+  sb [shape=box]
+  sb -> {pv}
+  vl [shape=box]
+  vl -> {mr cz}
+  dc [shape=box]
+  dc -> {lr}
+  xc [shape=box]
+  xc -> {rk bl}
+  cz [shape=box]
+  cz -> {cg mr}
+  hz [shape=box]
+  hz -> {bl hx}
+  xs [shape=box]
+  xs -> {pv cn}
+  js [shape=box]
+  js -> {ng}
+  cb [shape=box]
+  cb -> {mr nc}
+  qb [shape=box]
+  qb -> {vv}
+  gc [shape=box]
+  gc -> {qc}
+  bv [shape=box]
+  bv -> {qb vv}
+  broadcaster [shape=polyglon]
+  broadcaster -> {kn fb ln vl}
+  bs [shape=box]
+  bs -> {cb}
+  lf [shape=box]
+  lf -> {gc}
+  nc [shape=box]
+  nc -> {mr rj}
+  ln [shape=box]
+  ln -> {pv dh}
+  qc [shape=box]
+  qc -> {bs}
+  vv [shape=oval]
+  vv -> {zd jt fb hp gv lx}
+  ks [shape=oval]
+  ks -> {zh}
+  ql [shape=box]
+  ql -> {rb}
+  tp [shape=box]
+  tp -> {sm vv}
+  pv [shape=oval]
+  pv -> {sx dh jl ln js rb ql}
+  zd [shape=box]
+  zd -> {gv}
+}
