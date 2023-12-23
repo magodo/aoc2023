@@ -1,6 +1,4 @@
 use geo::coord;
-use geo::sweep::SweepPoint;
-use geo::Contains;
 use geo::Intersects;
 use geo::Line;
 use std::cmp::max;
@@ -114,4 +112,28 @@ fn main() {
         .collect();
     let p1 = non_critical_supporters.len();
     println!("{}", p1);
+
+    let mut p2 = 0;
+    bricks.0.iter().enumerate().for_each(|(idx, _)| {
+        let mut set: HashSet<usize> = HashSet::from_iter([idx]);
+        loop {
+            let old_set = set.clone();
+            bricks
+                .0
+                .iter()
+                .enumerate()
+                .filter(|(_, b)| {
+                    b.supporter.len() != 0 && b.supporter.iter().all(|sup| old_set.contains(sup))
+                })
+                .for_each(|(idx, _)| {
+                    set.insert(idx);
+                });
+
+            if old_set.len() == set.len() {
+                break;
+            }
+        }
+        p2 += set.len() - 1;
+    });
+    println!("{}", p2);
 }
